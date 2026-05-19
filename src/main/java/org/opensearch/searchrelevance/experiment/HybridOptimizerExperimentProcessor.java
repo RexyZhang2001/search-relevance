@@ -10,6 +10,7 @@ package org.opensearch.searchrelevance.experiment;
 import static org.opensearch.searchrelevance.common.MetricsConstants.POINTWISE_FIELD_NAME_SEARCH_CONFIGURATION_ID;
 import static org.opensearch.searchrelevance.experiment.ExperimentOptionsForHybridSearch.EXPERIMENT_OPTION_COMBINATION_TECHNIQUE;
 import static org.opensearch.searchrelevance.experiment.ExperimentOptionsForHybridSearch.EXPERIMENT_OPTION_NORMALIZATION_TECHNIQUE;
+import static org.opensearch.searchrelevance.experiment.ExperimentOptionsForHybridSearch.EXPERIMENT_OPTION_RANK_CONSTANT;
 import static org.opensearch.searchrelevance.experiment.ExperimentOptionsForHybridSearch.EXPERIMENT_OPTION_WEIGHTS_FOR_COMBINATION;
 
 import java.util.ArrayList;
@@ -91,16 +92,14 @@ public class HybridOptimizerExperimentProcessor {
         );
 
         for (ExperimentVariantHybridSearchDTO experimentVariantDTO : experimentVariantDTOs) {
-            Map<String, Object> parameters = new HashMap<>(
-                Map.of(
-                    EXPERIMENT_OPTION_NORMALIZATION_TECHNIQUE,
-                    experimentVariantDTO.getNormalizationTechnique(),
-                    EXPERIMENT_OPTION_COMBINATION_TECHNIQUE,
-                    experimentVariantDTO.getCombinationTechnique(),
-                    EXPERIMENT_OPTION_WEIGHTS_FOR_COMBINATION,
-                    experimentVariantDTO.getQueryWeightsForCombination()
-                )
-            );
+            Map<String, Object> parameters = new HashMap<>();
+            parameters.put(EXPERIMENT_OPTION_COMBINATION_TECHNIQUE, experimentVariantDTO.getCombinationTechnique());
+            if (experimentVariantDTO.getRrfConfig() != null) {
+                parameters.put(EXPERIMENT_OPTION_RANK_CONSTANT, experimentVariantDTO.getRrfConfig().getRankConstant());
+            } else {
+                parameters.put(EXPERIMENT_OPTION_NORMALIZATION_TECHNIQUE, experimentVariantDTO.getNormalizationTechnique());
+                parameters.put(EXPERIMENT_OPTION_WEIGHTS_FOR_COMBINATION, experimentVariantDTO.getQueryWeightsForCombination());
+            }
             String experimentVariantId = UUID.randomUUID().toString();
 
             // Create lightweight ExperimentVariant without storing it to index

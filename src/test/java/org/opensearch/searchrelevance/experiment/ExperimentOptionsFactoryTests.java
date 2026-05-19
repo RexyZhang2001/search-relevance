@@ -7,6 +7,7 @@
  */
 package org.opensearch.searchrelevance.experiment;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -52,5 +53,20 @@ public class ExperimentOptionsFactoryTests extends OpenSearchTestCase {
         );
 
         assertEquals("provided experiment name is not supported", exception.getMessage());
+    }
+
+    public void testCreateDefaultExperimentParametersForHybridSearch_includesZScoreAndRrf() {
+        // When
+        Map<String, Object> defaults = ExperimentOptionsFactory.createDefaultExperimentParametersForHybridSearch();
+
+        // Then
+        Set<String> normalizationTechniques = (Set<String>) defaults.get("normalizationTechniques");
+        assertTrue("defaults should include z_score", normalizationTechniques.contains("z_score"));
+
+        Set<String> combinationTechniques = (Set<String>) defaults.get("combinationTechniques");
+        assertTrue("defaults should include rrf", combinationTechniques.contains("rrf"));
+
+        List<Integer> rankConstants = (List<Integer>) defaults.get("rankConstants");
+        assertEquals(List.of(1, 5, 10, 20, 60), rankConstants);
     }
 }

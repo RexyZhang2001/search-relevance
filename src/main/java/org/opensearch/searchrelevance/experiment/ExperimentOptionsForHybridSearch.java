@@ -23,10 +23,21 @@ public class ExperimentOptionsForHybridSearch implements ExperimentOptions {
     private Set<String> normalizationTechniques;
     private Set<String> combinationTechniques;
     private WeightsRange weightsRange;
+    private List<Integer> rankConstants;
 
     public static final String EXPERIMENT_OPTION_NORMALIZATION_TECHNIQUE = "normalization";
     public static final String EXPERIMENT_OPTION_COMBINATION_TECHNIQUE = "combination";
     public static final String EXPERIMENT_OPTION_WEIGHTS_FOR_COMBINATION = "weights";
+    public static final String EXPERIMENT_OPTION_RANK_CONSTANT = "rank_constant";
+
+    public static final String NORMALIZATION_MIN_MAX = "min_max";
+    public static final String NORMALIZATION_L2 = "l2";
+    public static final String NORMALIZATION_Z_SCORE = "z_score";
+
+    public static final String COMBINATION_ARITHMETIC_MEAN = "arithmetic_mean";
+    public static final String COMBINATION_GEOMETRIC_MEAN = "geometric_mean";
+    public static final String COMBINATION_HARMONIC_MEAN = "harmonic_mean";
+    public static final String COMBINATION_RRF = "rrf";
 
     @Data
     @Builder
@@ -38,8 +49,32 @@ public class ExperimentOptionsForHybridSearch implements ExperimentOptions {
 
     public List<ExperimentVariantHybridSearchDTO> getParameterCombinations(boolean includeWeights) {
         List<ExperimentVariantHybridSearchDTO> allPossibleParameterCombinations = new ArrayList<>();
+        boolean rrfAlreadyExpanded = false;
         for (String normalizationTechnique : normalizationTechniques) {
             for (String combinationTechnique : combinationTechniques) {
+                // z_score produces negative values which are incompatible with geometric/harmonic mean
+                if (NORMALIZATION_Z_SCORE.equals(normalizationTechnique)
+                    && (COMBINATION_GEOMETRIC_MEAN.equals(combinationTechnique)
+                        || COMBINATION_HARMONIC_MEAN.equals(combinationTechnique))) {
+                    continue;
+                }
+                // RRF is rank-based: iterate over rank_constant values instead of weights.
+                // RRF is independent of normalization technique, so expand it only once across the whole matrix.
+                if (COMBINATION_RRF.equals(combinationTechnique)) {
+                    if (rrfAlreadyExpanded || rankConstants == null || rankConstants.isEmpty()) {
+                        continue;
+                    }
+                    for (Integer rankConstant : rankConstants) {
+                        allPossibleParameterCombinations.add(
+                            ExperimentVariantHybridSearchDTO.builder()
+                                .combinationTechnique(COMBINATION_RRF)
+                                .rrfConfig(RRFVariantConfig.builder().rankConstant(rankConstant).build())
+                                .build()
+                        );
+                    }
+                    rrfAlreadyExpanded = true;
+                    continue;
+                }
                 if (includeWeights) {
                     // use integer-based approach to avoid floating-point precision issues
                     float min = weightsRange.getRangeMin();

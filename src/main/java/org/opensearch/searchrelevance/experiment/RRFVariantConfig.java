@@ -12,9 +12,6 @@ import lombok.Data;
 
 @Data
 @Builder
-public class ExperimentVariantHybridSearchDTO {
-    private final String normalizationTechnique;
-    private final String combinationTechnique;
-    private final float[] queryWeightsForCombination;
-    private final RRFVariantConfig rrfConfig;
+public class RRFVariantConfig {
+    private final int rankConstant;
 }

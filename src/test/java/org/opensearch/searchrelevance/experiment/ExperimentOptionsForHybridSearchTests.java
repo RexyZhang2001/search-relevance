@@ -334,4 +334,56 @@ public class ExperimentOptionsForHybridSearchTests extends OpenSearchTestCase {
             assertTrue("w2 is not 1-decimal rounded: " + w2Str, w2Str.matches("^-?\\d(\\.\\d)?$"));
         }
     }
+
+    public void testGetParameterCombinations_whenRrfCombination_thenIterateOverRankConstants() {
+        // Given
+        Set<String> normalizationTechniques = Set.of("min_max");
+        Set<String> combinationTechniques = Set.of("rrf");
+        List<Integer> rankConstants = List.of(1, 10, 60, 100, 1000);
+
+        ExperimentOptionsForHybridSearch options = ExperimentOptionsForHybridSearch.builder()
+            .normalizationTechniques(normalizationTechniques)
+            .combinationTechniques(combinationTechniques)
+            .weightsRange(ExperimentOptionsForHybridSearch.WeightsRange.builder().rangeMin(0.0f).rangeMax(1.0f).increment(0.1f).build())
+            .rankConstants(rankConstants)
+            .build();
+
+        // When
+        List<ExperimentVariantHybridSearchDTO> combinations = options.getParameterCombinations(true);
+
+        // Then: one variant per rank_constant, not per weight
+        assertEquals(5, combinations.size());
+
+        Set<Integer> seenRankConstants = new HashSet<>();
+        for (ExperimentVariantHybridSearchDTO combo : combinations) {
+            assertEquals("rrf", combo.getCombinationTechnique());
+            assertNotNull(combo.getRrfConfig());
+            assertNull(combo.getNormalizationTechnique());
+            assertNull(combo.getQueryWeightsForCombination());
+            seenRankConstants.add(combo.getRrfConfig().getRankConstant());
+        }
+        assertEquals(Set.of(1, 10, 60, 100, 1000), seenRankConstants);
+    }
+
+    public void testGetParameterCombinations_whenZScoreWithGeometricOrHarmonic_thenSkipIncompatiblePairs() {
+        // Given: z_score is incompatible with geometric_mean and harmonic_mean (negative values)
+        Set<String> normalizationTechniques = Set.of("z_score");
+        Set<String> combinationTechniques = Set.of("arithmetic_mean", "geometric_mean", "harmonic_mean");
+
+        ExperimentOptionsForHybridSearch options = ExperimentOptionsForHybridSearch.builder()
+            .normalizationTechniques(normalizationTechniques)
+            .combinationTechniques(combinationTechniques)
+            .weightsRange(ExperimentOptionsForHybridSearch.WeightsRange.builder().rangeMin(0.0f).rangeMax(1.0f).increment(0.5f).build())
+            .build();
+
+        // When
+        List<ExperimentVariantHybridSearchDTO> combinations = options.getParameterCombinations(true);
+
+        // Then: only z_score × arithmetic_mean × 3 weights = 3
+        assertEquals(3, combinations.size());
+        for (ExperimentVariantHybridSearchDTO combo : combinations) {
+            assertEquals("z_score", combo.getNormalizationTechnique());
+            assertEquals("arithmetic_mean", combo.getCombinationTechnique());
+        }
+    }
 }

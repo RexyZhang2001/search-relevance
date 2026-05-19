@@ -7,6 +7,7 @@
  */
 package org.opensearch.searchrelevance.experiment;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -72,22 +73,38 @@ public class ExperimentOptionsFactory {
             builder.weightsRange(weightsRangeBuilder.build());
         }
 
+        if (params.containsKey("rankConstants")) {
+            builder.rankConstants((List<Integer>) params.get("rankConstants"));
+        }
+
         return builder.build();
     }
 
     /**
      * Creates a default set of experiment parameters for hybrid search.
+     * <p>
+     * The {@code rankConstants} list used by RRF variants was selected empirically
+     * by sweeping k &isin; {1, 2, 5, 10, 20, 40, 60, 80, 100, 150, 250, 500, 1000, 3000, 10000}
+     * on the ESCI benchmark (100k documents, 150 judged queries). The 15 k values
+     * collapsed into only 8 distinct top-10 equivalence groups; k &isin;
+     * {40, 60, 80, 100, 150, 250, 500, 1000} all produced identical retrieval on
+     * every query, while k &le; 20 each yielded a distinct top-10. The curated
+     * list below keeps one representative per behaviorally-distinct region
+     * (1, 5, 10, 20 for the sensitive range and 60 for the plateau), avoiding
+     * redundant RRF variants. See design doc &sect; 3.3.2 for the full analysis.
      *
      * @return A map containing the default experiment parameters.
      */
     public static Map<String, Object> createDefaultExperimentParametersForHybridSearch() {
         return Map.of(
             "normalizationTechniques",
-            Set.of("min_max", "l2"),
+            Set.of("min_max", "l2", "z_score"),
             "combinationTechniques",
-            Set.of("arithmetic_mean", "geometric_mean", "harmonic_mean"),
+            Set.of("arithmetic_mean", "geometric_mean", "harmonic_mean", "rrf"),
             "weightsRange",
-            Map.of("rangeMin", 0.0, "rangeMax", 1.0, "increment", 0.1)
+            Map.of("rangeMin", 0.0, "rangeMax", 1.0, "increment", 0.1),
+            "rankConstants",
+            List.of(1, 5, 10, 20, 60)
         );
     }
 }

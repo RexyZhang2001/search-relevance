@@ -52,6 +52,14 @@ public class ExperimentVariant implements ToXContentObject {
      * @return The computed textual parameters string
      */
     public String getTextualParameters() {
+        String combinationTechnique = String.valueOf(parameters.getOrDefault("combination", "unknown"));
+
+        if ("rrf".equals(combinationTechnique)) {
+            Object rankConstant = parameters.get("rank_constant");
+            String rankConstantString = rankConstant == null ? "null" : String.valueOf(rankConstant);
+            return "rrf, rank_constant=" + rankConstantString;
+        }
+
         Object weightsObj = parameters.get("weights");
         String weightsString = "null";
         if (weightsObj instanceof float[] weightsArray && weightsArray.length > 0) {
@@ -68,7 +76,6 @@ public class ExperimentVariant implements ToXContentObject {
             weightsString = weightsBuilder.toString();
         }
         String normalizationTechnique = String.valueOf(parameters.getOrDefault("normalization", "unknown"));
-        String combinationTechnique = String.valueOf(parameters.getOrDefault("combination", "unknown"));
         return combinationTechnique + ", " + normalizationTechnique + ", " + weightsString;
     }
 

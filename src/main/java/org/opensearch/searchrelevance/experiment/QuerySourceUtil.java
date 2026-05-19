@@ -7,8 +7,10 @@
  */
 package org.opensearch.searchrelevance.experiment;
 
+import static org.opensearch.searchrelevance.experiment.ExperimentOptionsForHybridSearch.COMBINATION_RRF;
 import static org.opensearch.searchrelevance.experiment.ExperimentOptionsForHybridSearch.EXPERIMENT_OPTION_COMBINATION_TECHNIQUE;
 import static org.opensearch.searchrelevance.experiment.ExperimentOptionsForHybridSearch.EXPERIMENT_OPTION_NORMALIZATION_TECHNIQUE;
+import static org.opensearch.searchrelevance.experiment.ExperimentOptionsForHybridSearch.EXPERIMENT_OPTION_RANK_CONSTANT;
 import static org.opensearch.searchrelevance.experiment.ExperimentOptionsForHybridSearch.EXPERIMENT_OPTION_WEIGHTS_FOR_COMBINATION;
 
 import java.io.IOException;
@@ -28,6 +30,16 @@ public class QuerySourceUtil {
 
     public static final int NUMBER_OF_SUBQUERIES_IN_HYBRID_QUERY = 2;
 
+    static final String PHASE_RESULTS_PROCESSORS_KEY = "phase_results_processors";
+    static final String NORMALIZATION_PROCESSOR_KEY = "normalization-processor";
+    static final String SCORE_RANKER_PROCESSOR_KEY = "score-ranker-processor";
+    static final String NORMALIZATION_KEY = "normalization";
+    static final String COMBINATION_KEY = "combination";
+    static final String TECHNIQUE_KEY = "technique";
+    static final String PARAMETERS_KEY = "parameters";
+    static final String WEIGHTS_KEY = "weights";
+    static final String RANK_CONSTANT_KEY = "rank_constant";
+
     /**
      * Creates a definition of a temporary search pipeline for hybrid search.
      * @param experimentVariant sub-experiment to create the pipeline for
@@ -35,12 +47,26 @@ public class QuerySourceUtil {
      */
     public static Map<String, Object> createDefinitionOfTemporarySearchPipeline(final ExperimentVariant experimentVariant) {
         Map<String, Object> experimentVariantParameters = experimentVariant.getParameters();
+
+        if (COMBINATION_RRF.equals(experimentVariantParameters.get(EXPERIMENT_OPTION_COMBINATION_TECHNIQUE))) {
+            Object rankConstantObj = experimentVariantParameters.get(EXPERIMENT_OPTION_RANK_CONSTANT);
+            int rankConstant = ((Number) rankConstantObj).intValue();
+            Map<String, Object> rrfCombinationConfig = new HashMap<>(
+                Map.of(TECHNIQUE_KEY, COMBINATION_RRF, RANK_CONSTANT_KEY, rankConstant)
+            );
+            Map<String, Object> scoreRankerConfig = new HashMap<>(Map.of(COMBINATION_KEY, rrfCombinationConfig));
+            Map<String, Object> rrfPhaseProcessorObject = new HashMap<>(Map.of(SCORE_RANKER_PROCESSOR_KEY, scoreRankerConfig));
+            Map<String, Object> rrfTemporarySearchPipeline = new HashMap<>();
+            rrfTemporarySearchPipeline.put(PHASE_RESULTS_PROCESSORS_KEY, List.of(rrfPhaseProcessorObject));
+            return rrfTemporarySearchPipeline;
+        }
+
         Map<String, Object> normalizationTechniqueConfig = new HashMap<>(
-            Map.of("technique", experimentVariantParameters.get(EXPERIMENT_OPTION_NORMALIZATION_TECHNIQUE))
+            Map.of(TECHNIQUE_KEY, experimentVariantParameters.get(EXPERIMENT_OPTION_NORMALIZATION_TECHNIQUE))
         );
 
         Map<String, Object> combinationTechniqueConfig = new HashMap<>(
-            Map.of("technique", experimentVariantParameters.get(EXPERIMENT_OPTION_COMBINATION_TECHNIQUE))
+            Map.of(TECHNIQUE_KEY, experimentVariantParameters.get(EXPERIMENT_OPTION_COMBINATION_TECHNIQUE))
         );
         if (Objects.nonNull(experimentVariantParameters.get(EXPERIMENT_OPTION_WEIGHTS_FOR_COMBINATION))) {
             float[] weights = (float[]) experimentVariantParameters.get(EXPERIMENT_OPTION_WEIGHTS_FOR_COMBINATION);
@@ -48,15 +74,15 @@ public class QuerySourceUtil {
             for (float weight : weights) {
                 weightsList.add((double) weight);
             }
-            combinationTechniqueConfig.put("parameters", new HashMap<>(Map.of("weights", weightsList)));
+            combinationTechniqueConfig.put(PARAMETERS_KEY, new HashMap<>(Map.of(WEIGHTS_KEY, weightsList)));
         }
 
         Map<String, Object> normalizationProcessorConfig = new HashMap<>(
-            Map.of("normalization", normalizationTechniqueConfig, "combination", combinationTechniqueConfig)
+            Map.of(NORMALIZATION_KEY, normalizationTechniqueConfig, COMBINATION_KEY, combinationTechniqueConfig)
         );
-        Map<String, Object> phaseProcessorObject = new HashMap<>(Map.of("normalization-processor", normalizationProcessorConfig));
+        Map<String, Object> phaseProcessorObject = new HashMap<>(Map.of(NORMALIZATION_PROCESSOR_KEY, normalizationProcessorConfig));
         Map<String, Object> temporarySearchPipeline = new HashMap<>();
-        temporarySearchPipeline.put("phase_results_processors", List.of(phaseProcessorObject));
+        temporarySearchPipeline.put(PHASE_RESULTS_PROCESSORS_KEY, List.of(phaseProcessorObject));
         return temporarySearchPipeline;
     }
 
