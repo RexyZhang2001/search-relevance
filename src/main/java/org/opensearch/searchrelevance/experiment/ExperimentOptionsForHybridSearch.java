@@ -9,27 +9,19 @@ package org.opensearch.searchrelevance.experiment;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 import lombok.Builder;
 import lombok.Data;
 
-@Data
-@Builder
 /**
  * Experiment options for hybrid search.
  * <p>
- * Holds the user-provided technique sets and assembles a list of
- * {@link HybridSearchConfig} instances at expansion time. Each config knows
- * how to expand itself into concrete variants (score-based ones via
- * {@link ScoreBasedHybridSearchConfig}, rank-based RRF via
- * {@link RRFHybridSearchConfig}).
+ * Holds the technique-name constants and assembles the list of
+ * {@link HybridSearchConfig} instances representing the curated default sweep.
+ * Valid combinations are spelled out explicitly here so the relationships
+ * between parameters are visible at the definition site.
  */
 public class ExperimentOptionsForHybridSearch implements ExperimentOptions {
-    private Set<String> normalizationTechniques;
-    private Set<String> combinationTechniques;
-    private WeightsRange weightsRange;
-    private List<Integer> rankConstants;
 
     public static final String EXPERIMENT_OPTION_NORMALIZATION_TECHNIQUE = "normalization";
     public static final String EXPERIMENT_OPTION_COMBINATION_TECHNIQUE = "combination";
@@ -54,68 +46,44 @@ public class ExperimentOptionsForHybridSearch implements ExperimentOptions {
     }
 
     /**
-     * Creates the default experiment options for hybrid search with all supported techniques.
+     * Expand the curated default sweep into concrete variant DTOs.
+     * <p>
+     * The structure makes the strategy-to-parameter relationships explicit:
+     * RRF contributes one variant per rank_constant (normalization-independent);
+     * the legacy normalization-processor contributes one variant per
+     * (normalization, combination, weight) for {@code min_max} / {@code l2}
+     * paired with the three mean combinations; {@code z_score} is paired only
+     * with arithmetic mean since it produces negative values that break the
+     * geometric and harmonic means.
      */
-    public static ExperimentOptionsForHybridSearch createDefault() {
-        return ExperimentOptionsForHybridSearch.builder()
-            .normalizationTechniques(Set.of(NORMALIZATION_MIN_MAX, NORMALIZATION_L2, NORMALIZATION_Z_SCORE))
-            .combinationTechniques(
-                Set.of(COMBINATION_ARITHMETIC_MEAN, COMBINATION_GEOMETRIC_MEAN, COMBINATION_HARMONIC_MEAN, COMBINATION_RRF)
-            )
-            .weightsRange(WeightsRange.builder().rangeMin(0.0f).rangeMax(1.0f).increment(0.1f).build())
-            .rankConstants(List.of(1, 5, 10, 20, 60))
-            .build();
-    }
+    public List<ExperimentVariantHybridSearchDTO> getParameterCombinations() {
+        WeightsRange weightsRange = WeightsRange.builder().rangeMin(0.0f).rangeMax(1.0f).increment(0.1f).build();
 
-    public List<ExperimentVariantHybridSearchDTO> getParameterCombinations(boolean includeWeights) {
-        List<ExperimentVariantHybridSearchDTO> allVariants = new ArrayList<>();
-        for (HybridSearchConfig config : buildConfigs()) {
-            allVariants.addAll(config.getAllVariants(includeWeights));
-        }
-        return allVariants;
-    }
-
-    /**
-     * Build the list of configurations represented by the user-provided technique sets.
-     * Score-based configs are created only for valid (normalization, combination) pairs;
-     * RRF, which is normalization-independent, contributes a single config when requested.
-     */
-    private List<HybridSearchConfig> buildConfigs() {
         List<HybridSearchConfig> configs = new ArrayList<>();
-
-        if (combinationTechniques != null && combinationTechniques.contains(COMBINATION_RRF)) {
-            configs.add(RRFHybridSearchConfig.builder().rankConstants(rankConstants).build());
-        }
-
-        if (normalizationTechniques == null || combinationTechniques == null) {
-            return configs;
-        }
-        for (String normalizationTechnique : normalizationTechniques) {
-            for (String combinationTechnique : combinationTechniques) {
-                if (COMBINATION_RRF.equals(combinationTechnique)) {
-                    continue;
-                }
-                if (isIncompatible(normalizationTechnique, combinationTechnique)) {
-                    continue;
-                }
+        configs.add(RRFHybridSearchConfig.builder().rankConstants(List.of(1, 5, 10, 20, 60)).build());
+        for (String normalization : List.of(NORMALIZATION_MIN_MAX, NORMALIZATION_L2)) {
+            for (String combination : List.of(COMBINATION_ARITHMETIC_MEAN, COMBINATION_GEOMETRIC_MEAN, COMBINATION_HARMONIC_MEAN)) {
                 configs.add(
                     ScoreBasedHybridSearchConfig.builder()
-                        .normalizationTechnique(normalizationTechnique)
-                        .combinationTechnique(combinationTechnique)
+                        .normalizationTechnique(normalization)
+                        .combinationTechnique(combination)
                         .weightsRange(weightsRange)
                         .build()
                 );
             }
         }
-        return configs;
-    }
+        configs.add(
+            ScoreBasedHybridSearchConfig.builder()
+                .normalizationTechnique(NORMALIZATION_Z_SCORE)
+                .combinationTechnique(COMBINATION_ARITHMETIC_MEAN)
+                .weightsRange(weightsRange)
+                .build()
+        );
 
-    /**
-     * z_score produces negative values, which break geometric_mean (n-th root of a product
-     * with negative factors) and harmonic_mean (division by values near zero).
-     */
-    private static boolean isIncompatible(String normalization, String combination) {
-        return NORMALIZATION_Z_SCORE.equals(normalization)
-            && (COMBINATION_GEOMETRIC_MEAN.equals(combination) || COMBINATION_HARMONIC_MEAN.equals(combination));
+        List<ExperimentVariantHybridSearchDTO> allVariants = new ArrayList<>();
+        for (HybridSearchConfig config : configs) {
+            allVariants.addAll(config.getAllVariants());
+        }
+        return allVariants;
     }
 }

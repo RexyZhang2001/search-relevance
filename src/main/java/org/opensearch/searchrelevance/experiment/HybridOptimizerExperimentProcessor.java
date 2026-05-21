@@ -8,10 +8,6 @@
 package org.opensearch.searchrelevance.experiment;
 
 import static org.opensearch.searchrelevance.common.MetricsConstants.POINTWISE_FIELD_NAME_SEARCH_CONFIGURATION_ID;
-import static org.opensearch.searchrelevance.experiment.ExperimentOptionsForHybridSearch.EXPERIMENT_OPTION_COMBINATION_TECHNIQUE;
-import static org.opensearch.searchrelevance.experiment.ExperimentOptionsForHybridSearch.EXPERIMENT_OPTION_NORMALIZATION_TECHNIQUE;
-import static org.opensearch.searchrelevance.experiment.ExperimentOptionsForHybridSearch.EXPERIMENT_OPTION_RANK_CONSTANT;
-import static org.opensearch.searchrelevance.experiment.ExperimentOptionsForHybridSearch.EXPERIMENT_OPTION_WEIGHTS_FOR_COMBINATION;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -75,10 +71,9 @@ public class HybridOptimizerExperimentProcessor {
         Map<String, List<Future<?>>> runningFutures,
         ActionListener<Map<String, Object>> listener
     ) {
-        // Create parameter combinations for hybrid search
-        ExperimentOptionsForHybridSearch experimentOptionForHybridSearch = ExperimentOptionsForHybridSearch.createDefault();
+        ExperimentOptionsForHybridSearch experimentOptionForHybridSearch = new ExperimentOptionsForHybridSearch();
 
-        List<ExperimentVariantHybridSearchDTO> experimentVariantDTOs = experimentOptionForHybridSearch.getParameterCombinations(true);
+        List<ExperimentVariantHybridSearchDTO> experimentVariantDTOs = experimentOptionForHybridSearch.getParameterCombinations();
         List<ExperimentVariant> experimentVariants = new ArrayList<>();
         AtomicBoolean hasFailure = new AtomicBoolean(false);
 
@@ -90,14 +85,7 @@ public class HybridOptimizerExperimentProcessor {
         );
 
         for (ExperimentVariantHybridSearchDTO experimentVariantDTO : experimentVariantDTOs) {
-            Map<String, Object> parameters = new HashMap<>();
-            parameters.put(EXPERIMENT_OPTION_COMBINATION_TECHNIQUE, experimentVariantDTO.getCombinationTechnique());
-            if (experimentVariantDTO.getRrfConfig() != null) {
-                parameters.put(EXPERIMENT_OPTION_RANK_CONSTANT, experimentVariantDTO.getRrfConfig().getRankConstant());
-            } else {
-                parameters.put(EXPERIMENT_OPTION_NORMALIZATION_TECHNIQUE, experimentVariantDTO.getNormalizationTechnique());
-                parameters.put(EXPERIMENT_OPTION_WEIGHTS_FOR_COMBINATION, experimentVariantDTO.getQueryWeightsForCombination());
-            }
+            Map<String, Object> parameters = new HashMap<>(experimentVariantDTO.toParameters());
             String experimentVariantId = UUID.randomUUID().toString();
 
             // Create lightweight ExperimentVariant without storing it to index

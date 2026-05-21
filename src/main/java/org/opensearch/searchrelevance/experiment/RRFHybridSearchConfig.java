@@ -7,8 +7,6 @@
  */
 package org.opensearch.searchrelevance.experiment;
 
-import static org.opensearch.searchrelevance.experiment.ExperimentOptionsForHybridSearch.COMBINATION_RRF;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,20 +26,13 @@ public class RRFHybridSearchConfig implements HybridSearchConfig {
     private final List<Integer> rankConstants;
 
     @Override
-    public List<ExperimentVariantHybridSearchDTO> getAllVariants(boolean includeWeights) {
+    public List<ExperimentVariantHybridSearchDTO> getAllVariants() {
         if (rankConstants == null || rankConstants.isEmpty()) {
-            throw new IllegalArgumentException(
-                "rankConstants is required when 'rrf' is among the requested combination techniques; got null or empty"
-            );
+            throw new IllegalArgumentException("rankConstants is required for RRF; got null or empty");
         }
         List<ExperimentVariantHybridSearchDTO> variants = new ArrayList<>();
         for (Integer rankConstant : rankConstants) {
-            variants.add(
-                ExperimentVariantHybridSearchDTO.builder()
-                    .combinationTechnique(COMBINATION_RRF)
-                    .rrfConfig(new RRFVariantConfig(rankConstant))
-                    .build()
-            );
+            variants.add(new RRFExperimentVariantHybridSearchDTO(rankConstant));
         }
         return variants;
     }

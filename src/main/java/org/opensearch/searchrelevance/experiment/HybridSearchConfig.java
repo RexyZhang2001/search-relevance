@@ -11,16 +11,13 @@ import java.util.List;
 
 /**
  * A hybrid-search configuration that knows how to expand itself into one or more
- * concrete variant DTOs. Each subclass owns the parameters and the expansion logic
- * for a single technique family (e.g. score-based mean combinations, RRF).
+ * concrete variant DTOs. Each implementation owns the parameters and the expansion
+ * logic for a single technique family (e.g. score-based mean combinations, RRF).
  */
 public interface HybridSearchConfig {
 
     /**
      * Expand this configuration into the list of variant DTOs it represents.
-     *
-     * @param includeWeights whether to expand the weights range; ignored by configurations
-     *                       that do not use weights (e.g. RRF).
      */
-    List<ExperimentVariantHybridSearchDTO> getAllVariants(boolean includeWeights);
+    List<ExperimentVariantHybridSearchDTO> getAllVariants();
 }

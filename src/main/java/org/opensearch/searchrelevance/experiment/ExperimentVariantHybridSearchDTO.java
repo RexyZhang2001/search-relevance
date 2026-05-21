@@ -7,14 +7,43 @@
  */
 package org.opensearch.searchrelevance.experiment;
 
-import lombok.Builder;
-import lombok.Data;
+import static org.opensearch.searchrelevance.experiment.ExperimentOptionsForHybridSearch.COMBINATION_RRF;
+import static org.opensearch.searchrelevance.experiment.ExperimentOptionsForHybridSearch.EXPERIMENT_OPTION_COMBINATION_TECHNIQUE;
 
-@Data
-@Builder
-public class ExperimentVariantHybridSearchDTO {
-    private final String normalizationTechnique;
-    private final String combinationTechnique;
-    private final float[] queryWeightsForCombination;
-    private final RRFVariantConfig rrfConfig;
+import java.util.Map;
+
+/**
+ * Carrier for a single hybrid-search experiment variant. Each implementation knows how to
+ * (a) materialize itself into a {@code parameters} map for persistence, and
+ * (b) materialize itself into a temporary search-pipeline definition for execution.
+ * <p>
+ * Two implementations exist: {@link RRFExperimentVariantHybridSearchDTO} for rank-based
+ * RRF variants, and {@link ScoreBasedExperimentVariantHybridSearchDTO} for score-based
+ * variants going through the normalization-processor.
+ */
+public interface ExperimentVariantHybridSearchDTO {
+
+    /**
+     * @return parameters map suitable for persistence as the {@code parameters} field of an
+     *         {@link org.opensearch.searchrelevance.model.ExperimentVariant} document.
+     */
+    Map<String, Object> toParameters();
+
+    /**
+     * @return a temporary search-pipeline definition (a nested map mirroring the JSON
+     *         structure neural-search expects) for executing this variant.
+     */
+    Map<String, Object> toSearchPipeline();
+
+    /**
+     * Reconstruct a typed DTO from a persisted {@code parameters} map. Dispatches on the
+     * {@code combination} value: {@code "rrf"} routes to RRF, anything else routes to
+     * score-based.
+     */
+    static ExperimentVariantHybridSearchDTO fromParameters(Map<String, Object> parameters) {
+        if (COMBINATION_RRF.equals(parameters.get(EXPERIMENT_OPTION_COMBINATION_TECHNIQUE))) {
+            return RRFExperimentVariantHybridSearchDTO.fromParameters(parameters);
+        }
+        return ScoreBasedExperimentVariantHybridSearchDTO.fromParameters(parameters);
+    }
 }
