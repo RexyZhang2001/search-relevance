@@ -48,20 +48,23 @@ public class ExperimentVariant implements ToXContentObject {
     /**
      * Computes the textual parameters for this experiment variant based on its parameters.
      * The textual parameters are generated on-demand and not stored.
+     * <p>
+     * Output uses a uniform {@code key=value} format separated by commas, so different
+     * variant shapes (e.g. score-based vs rank-based) remain self-describing:
+     * <ul>
+     *   <li>Score-based: {@code combination=arithmetic_mean, normalization=min_max, weights=0.5;0.5}</li>
+     *   <li>RRF: {@code combination=rrf, rank_constant=60}</li>
+     * </ul>
+     * Only fields actually present on the variant are emitted; missing fields are skipped.
      *
      * @return The computed textual parameters string
      */
     public String getTextualParameters() {
-        String combinationTechnique = String.valueOf(parameters.getOrDefault("combination", "unknown"));
-
-        if ("rrf".equals(combinationTechnique)) {
-            Object rankConstant = parameters.get("rank_constant");
-            String rankConstantString = rankConstant == null ? "null" : String.valueOf(rankConstant);
-            return "rrf, rank_constant=" + rankConstantString;
-        }
+        StringBuilder sb = new StringBuilder();
+        appendIfPresent(sb, "combination", parameters.get("combination"));
+        appendIfPresent(sb, "normalization", parameters.get("normalization"));
 
         Object weightsObj = parameters.get("weights");
-        String weightsString = "null";
         if (weightsObj instanceof float[] weightsArray && weightsArray.length > 0) {
             StringBuilder weightsBuilder = new StringBuilder();
             NumberFormat formatter = NumberFormat.getNumberInstance(Locale.ROOT);
@@ -73,10 +76,21 @@ public class ExperimentVariant implements ToXContentObject {
                 }
                 weightsBuilder.append(formatter.format(weightsArray[i]));
             }
-            weightsString = weightsBuilder.toString();
+            appendIfPresent(sb, "weights", weightsBuilder.toString());
         }
-        String normalizationTechnique = String.valueOf(parameters.getOrDefault("normalization", "unknown"));
-        return combinationTechnique + ", " + normalizationTechnique + ", " + weightsString;
+
+        appendIfPresent(sb, "rank_constant", parameters.get("rank_constant"));
+        return sb.toString();
+    }
+
+    private static void appendIfPresent(StringBuilder sb, String key, Object value) {
+        if (value == null) {
+            return;
+        }
+        if (sb.length() > 0) {
+            sb.append(", ");
+        }
+        sb.append(key).append('=').append(value);
     }
 
     @Override

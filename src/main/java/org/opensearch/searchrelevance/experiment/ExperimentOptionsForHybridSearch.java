@@ -17,7 +17,13 @@ import lombok.Data;
 @Data
 @Builder
 /**
- * Experiment options for hybrid search
+ * Experiment options for hybrid search.
+ * <p>
+ * Holds the user-provided technique sets and assembles a list of
+ * {@link HybridSearchConfig} instances at expansion time. Each config knows
+ * how to expand itself into concrete variants (score-based ones via
+ * {@link ScoreBasedHybridSearchConfig}, rank-based RRF via
+ * {@link RRFHybridSearchConfig}).
  */
 public class ExperimentOptionsForHybridSearch implements ExperimentOptions {
     private Set<String> normalizationTechniques;
@@ -41,80 +47,61 @@ public class ExperimentOptionsForHybridSearch implements ExperimentOptions {
 
     @Data
     @Builder
-    static class WeightsRange {
+    public static class WeightsRange {
         private float rangeMin;
         private float rangeMax;
         private float increment;
     }
 
     public List<ExperimentVariantHybridSearchDTO> getParameterCombinations(boolean includeWeights) {
-        List<ExperimentVariantHybridSearchDTO> allPossibleParameterCombinations = new ArrayList<>();
-        boolean rrfAlreadyExpanded = false;
+        List<ExperimentVariantHybridSearchDTO> allVariants = new ArrayList<>();
+        for (HybridSearchConfig config : buildConfigs()) {
+            allVariants.addAll(config.getAllVariants(includeWeights));
+        }
+        return allVariants;
+    }
+
+    /**
+     * Build the list of configurations represented by the user-provided technique sets.
+     * Score-based configs are created only for valid (normalization, combination) pairs;
+     * RRF, which is normalization-independent, contributes a single config when requested.
+     */
+    private List<HybridSearchConfig> buildConfigs() {
+        List<HybridSearchConfig> configs = new ArrayList<>();
+
+        if (combinationTechniques != null && combinationTechniques.contains(COMBINATION_RRF)) {
+            configs.add(RRFHybridSearchConfig.builder().rankConstants(rankConstants).build());
+        }
+
+        if (normalizationTechniques == null || combinationTechniques == null) {
+            return configs;
+        }
         for (String normalizationTechnique : normalizationTechniques) {
             for (String combinationTechnique : combinationTechniques) {
-                // z_score produces negative values which are incompatible with geometric/harmonic mean
-                if (NORMALIZATION_Z_SCORE.equals(normalizationTechnique)
-                    && (COMBINATION_GEOMETRIC_MEAN.equals(combinationTechnique)
-                        || COMBINATION_HARMONIC_MEAN.equals(combinationTechnique))) {
-                    continue;
-                }
-                // RRF is rank-based: iterate over rank_constant values instead of weights.
-                // RRF is independent of normalization technique, so expand it only once across the whole matrix.
                 if (COMBINATION_RRF.equals(combinationTechnique)) {
-                    if (rrfAlreadyExpanded || rankConstants == null || rankConstants.isEmpty()) {
-                        continue;
-                    }
-                    for (Integer rankConstant : rankConstants) {
-                        allPossibleParameterCombinations.add(
-                            ExperimentVariantHybridSearchDTO.builder()
-                                .combinationTechnique(COMBINATION_RRF)
-                                .rrfConfig(RRFVariantConfig.builder().rankConstant(rankConstant).build())
-                                .build()
-                        );
-                    }
-                    rrfAlreadyExpanded = true;
                     continue;
                 }
-                if (includeWeights) {
-                    // use integer-based approach to avoid floating-point precision issues
-                    float min = weightsRange.getRangeMin();
-                    float max = weightsRange.getRangeMax();
-                    float increment = weightsRange.getIncrement();
-
-                    // calculate number of steps to ensure we include all values including the max
-                    int steps = Math.round((max - min) / increment) + 1;
-
-                    for (int i = 0; i < steps; i++) {
-                        // calculate weight, ensuring the last step is exactly the max value
-                        float queryWeightForCombination;
-                        if (i == steps - 1) {
-                            queryWeightForCombination = max;
-                        } else {
-                            queryWeightForCombination = min + (i * increment);
-                        }
-
-                        float w1 = Math.round(queryWeightForCombination * 10) / 10.0f;
-                        float w2 = Math.round((1.0f - w1) * 10) / 10.0f;
-
-                        allPossibleParameterCombinations.add(
-                            ExperimentVariantHybridSearchDTO.builder()
-                                .normalizationTechnique(normalizationTechnique)
-                                .combinationTechnique(combinationTechnique)
-                                .queryWeightsForCombination(new float[] { w1, w2 })
-                                .build()
-                        );
-                    }
-                } else {
-                    allPossibleParameterCombinations.add(
-                        ExperimentVariantHybridSearchDTO.builder()
-                            .normalizationTechnique(normalizationTechnique)
-                            .combinationTechnique(combinationTechnique)
-                            .queryWeightsForCombination(new float[] { 0.5f, 0.5f })
-                            .build()
-                    );
+                if (isIncompatible(normalizationTechnique, combinationTechnique)) {
+                    continue;
                 }
+                configs.add(
+                    ScoreBasedHybridSearchConfig.builder()
+                        .normalizationTechnique(normalizationTechnique)
+                        .combinationTechnique(combinationTechnique)
+                        .weightsRange(weightsRange)
+                        .build()
+                );
             }
         }
-        return allPossibleParameterCombinations;
+        return configs;
+    }
+
+    /**
+     * z_score produces negative values, which break geometric_mean (n-th root of a product
+     * with negative factors) and harmonic_mean (division by values near zero).
+     */
+    private static boolean isIncompatible(String normalization, String combination) {
+        return NORMALIZATION_Z_SCORE.equals(normalization)
+            && (COMBINATION_GEOMETRIC_MEAN.equals(combination) || COMBINATION_HARMONIC_MEAN.equals(combination));
     }
 }

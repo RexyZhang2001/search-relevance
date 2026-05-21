@@ -50,6 +50,14 @@ public class QuerySourceUtil {
 
         if (COMBINATION_RRF.equals(experimentVariantParameters.get(EXPERIMENT_OPTION_COMBINATION_TECHNIQUE))) {
             Object rankConstantObj = experimentVariantParameters.get(EXPERIMENT_OPTION_RANK_CONSTANT);
+            if (rankConstantObj == null) {
+                throw new IllegalArgumentException("RRF variant is missing required parameter '" + EXPERIMENT_OPTION_RANK_CONSTANT + "'");
+            }
+            if (!(rankConstantObj instanceof Number)) {
+                throw new IllegalArgumentException(
+                    "RRF parameter '" + EXPERIMENT_OPTION_RANK_CONSTANT + "' must be a number, got: " + rankConstantObj.getClass()
+                );
+            }
             int rankConstant = ((Number) rankConstantObj).intValue();
             Map<String, Object> rrfCombinationConfig = new HashMap<>(
                 Map.of(TECHNIQUE_KEY, COMBINATION_RRF, RANK_CONSTANT_KEY, rankConstant)

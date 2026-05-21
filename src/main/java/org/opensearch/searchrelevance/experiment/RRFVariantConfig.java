@@ -7,11 +7,11 @@
  */
 package org.opensearch.searchrelevance.experiment;
 
-import lombok.Builder;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 
 @Data
-@Builder
+@AllArgsConstructor
 public class RRFVariantConfig {
     private final int rankConstant;
 }

@@ -7,6 +7,7 @@
  */
 package org.opensearch.searchrelevance.experiment;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -74,7 +75,22 @@ public class ExperimentOptionsFactory {
         }
 
         if (params.containsKey("rankConstants")) {
-            builder.rankConstants((List<Integer>) params.get("rankConstants"));
+            Object rawValue = params.get("rankConstants");
+            if (!(rawValue instanceof List<?> rawList)) {
+                throw new IllegalArgumentException(
+                    "rankConstants must be a list of integers, got: " + (rawValue == null ? "null" : rawValue.getClass())
+                );
+            }
+            List<Integer> ranks = new ArrayList<>(rawList.size());
+            for (Object element : rawList) {
+                if (!(element instanceof Number n)) {
+                    throw new IllegalArgumentException(
+                        "rankConstants must contain integers, got: " + (element == null ? "null" : element.getClass())
+                    );
+                }
+                ranks.add(n.intValue());
+            }
+            builder.rankConstants(ranks);
         }
 
         return builder.build();
@@ -91,7 +107,7 @@ public class ExperimentOptionsFactory {
      * every query, while k &le; 20 each yielded a distinct top-10. The curated
      * list below keeps one representative per behaviorally-distinct region
      * (1, 5, 10, 20 for the sensitive range and 60 for the plateau), avoiding
-     * redundant RRF variants. See design doc &sect; 3.3.2 for the full analysis.
+     * redundant RRF variants.
      *
      * @return A map containing the default experiment parameters.
      */

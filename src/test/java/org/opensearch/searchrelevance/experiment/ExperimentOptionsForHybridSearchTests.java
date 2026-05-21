@@ -386,4 +386,50 @@ public class ExperimentOptionsForHybridSearchTests extends OpenSearchTestCase {
             assertEquals("arithmetic_mean", combo.getCombinationTechnique());
         }
     }
+
+    public void testGetParameterCombinations_withFactoryDefaults_yieldsAllExpectedVariants() {
+        // Given: the production default parameter set.
+        ExperimentOptionsForHybridSearch options = (ExperimentOptionsForHybridSearch) ExperimentOptionsFactory.createExperimentOptions(
+            ExperimentOptionsFactory.HYBRID_SEARCH_EXPERIMENT_OPTIONS,
+            ExperimentOptionsFactory.createDefaultExperimentParametersForHybridSearch()
+        );
+
+        // When
+        List<ExperimentVariantHybridSearchDTO> combinations = options.getParameterCombinations(true);
+
+        // Then: 66 legacy NP + 11 z_score NP + 5 RRF = 82 total
+        assertEquals("default parameters should produce 82 variants per query", 82, combinations.size());
+
+        int rrfCount = 0;
+        int zScoreCount = 0;
+        int legacyNpCount = 0;
+        Set<Integer> rrfRankConstants = new HashSet<>();
+        Set<String> zScoreCombinations = new HashSet<>();
+
+        for (ExperimentVariantHybridSearchDTO combo : combinations) {
+            if ("rrf".equals(combo.getCombinationTechnique())) {
+                rrfCount++;
+                assertNotNull("rrf variant must carry rrfConfig", combo.getRrfConfig());
+                assertNull("rrf variant must not carry normalization", combo.getNormalizationTechnique());
+                assertNull("rrf variant must not carry weights", combo.getQueryWeightsForCombination());
+                rrfRankConstants.add(combo.getRrfConfig().getRankConstant());
+            } else if ("z_score".equals(combo.getNormalizationTechnique())) {
+                zScoreCount++;
+                zScoreCombinations.add(combo.getCombinationTechnique());
+            } else {
+                legacyNpCount++;
+                assertNotNull(combo.getNormalizationTechnique());
+                assertNotNull(combo.getQueryWeightsForCombination());
+            }
+        }
+
+        // 66 legacy NP variants: {min_max, l2} x {arith, geo, harm} x 11 weights
+        assertEquals("legacy NP variant count", 66, legacyNpCount);
+        // 11 z_score variants: only paired with arithmetic_mean (geo/harm filtered as incompatible)
+        assertEquals("z_score variant count", 11, zScoreCount);
+        assertEquals("z_score must only pair with arithmetic_mean", Set.of("arithmetic_mean"), zScoreCombinations);
+        // 5 RRF variants, one per rank_constant in the curated default list
+        assertEquals("rrf variant count", 5, rrfCount);
+        assertEquals("rrf rank_constants must match the curated default list", Set.of(1, 5, 10, 20, 60), rrfRankConstants);
+    }
 }
