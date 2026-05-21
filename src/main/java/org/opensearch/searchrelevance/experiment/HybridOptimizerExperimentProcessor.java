@@ -76,9 +76,7 @@ public class HybridOptimizerExperimentProcessor {
         ActionListener<Map<String, Object>> listener
     ) {
         // Create parameter combinations for hybrid search
-        Map<String, Object> defaultParametersForHybridSearch = ExperimentOptionsFactory.createDefaultExperimentParametersForHybridSearch();
-        ExperimentOptionsForHybridSearch experimentOptionForHybridSearch = (ExperimentOptionsForHybridSearch) ExperimentOptionsFactory
-            .createExperimentOptions(ExperimentOptionsFactory.HYBRID_SEARCH_EXPERIMENT_OPTIONS, defaultParametersForHybridSearch);
+        ExperimentOptionsForHybridSearch experimentOptionForHybridSearch = ExperimentOptionsForHybridSearch.createDefault();
 
         List<ExperimentVariantHybridSearchDTO> experimentVariantDTOs = experimentOptionForHybridSearch.getParameterCombinations(true);
         List<ExperimentVariant> experimentVariants = new ArrayList<>();

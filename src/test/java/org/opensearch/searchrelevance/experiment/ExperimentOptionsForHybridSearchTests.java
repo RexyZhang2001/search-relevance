@@ -389,10 +389,7 @@ public class ExperimentOptionsForHybridSearchTests extends OpenSearchTestCase {
 
     public void testGetParameterCombinations_withFactoryDefaults_yieldsAllExpectedVariants() {
         // Given: the production default parameter set.
-        ExperimentOptionsForHybridSearch options = (ExperimentOptionsForHybridSearch) ExperimentOptionsFactory.createExperimentOptions(
-            ExperimentOptionsFactory.HYBRID_SEARCH_EXPERIMENT_OPTIONS,
-            ExperimentOptionsFactory.createDefaultExperimentParametersForHybridSearch()
-        );
+        ExperimentOptionsForHybridSearch options = ExperimentOptionsForHybridSearch.createDefault();
 
         // When
         List<ExperimentVariantHybridSearchDTO> combinations = options.getParameterCombinations(true);

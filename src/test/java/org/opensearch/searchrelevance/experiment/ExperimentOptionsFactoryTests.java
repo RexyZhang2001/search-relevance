@@ -7,7 +7,6 @@
  */
 package org.opensearch.searchrelevance.experiment;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -19,15 +18,10 @@ public class ExperimentOptionsFactoryTests extends OpenSearchTestCase {
 
     public void testCreateExperimentOptions_whenValidHybridSearchOptions_thenSuccessful() {
         // When
-        ExperimentOptions experimentOptions = ExperimentOptionsFactory.createExperimentOptions(
-            ExperimentOptionsFactory.HYBRID_SEARCH_EXPERIMENT_OPTIONS,
-            ExperimentOptionsFactory.createDefaultExperimentParametersForHybridSearch()
-        );
+        ExperimentOptionsForHybridSearch result = ExperimentOptionsForHybridSearch.createDefault();
 
         // Then
-        assertNotNull(experimentOptions);
-        assertTrue(experimentOptions instanceof ExperimentOptionsForHybridSearch);
-        ExperimentOptionsForHybridSearch result = (ExperimentOptionsForHybridSearch) experimentOptions;
+        assertNotNull(result);
         assertNotNull(result.getWeightsRange());
         ExperimentOptionsForHybridSearch.WeightsRange resultWeightsRange = result.getWeightsRange();
         assertEquals(0.0f, resultWeightsRange.getRangeMin(), DELTA_FOR_FLOAT_ASSERTION);
@@ -55,18 +49,13 @@ public class ExperimentOptionsFactoryTests extends OpenSearchTestCase {
         assertEquals("provided experiment name is not supported", exception.getMessage());
     }
 
-    public void testCreateDefaultExperimentParametersForHybridSearch_includesZScoreAndRrf() {
+    public void testCreateDefault_includesZScoreAndRrf() {
         // When
-        Map<String, Object> defaults = ExperimentOptionsFactory.createDefaultExperimentParametersForHybridSearch();
+        ExperimentOptionsForHybridSearch defaults = ExperimentOptionsForHybridSearch.createDefault();
 
         // Then
-        Set<String> normalizationTechniques = (Set<String>) defaults.get("normalizationTechniques");
-        assertTrue("defaults should include z_score", normalizationTechniques.contains("z_score"));
-
-        Set<String> combinationTechniques = (Set<String>) defaults.get("combinationTechniques");
-        assertTrue("defaults should include rrf", combinationTechniques.contains("rrf"));
-
-        List<Integer> rankConstants = (List<Integer>) defaults.get("rankConstants");
-        assertEquals(List.of(1, 5, 10, 20, 60), rankConstants);
+        assertTrue("defaults should include z_score", defaults.getNormalizationTechniques().contains("z_score"));
+        assertTrue("defaults should include rrf", defaults.getCombinationTechniques().contains("rrf"));
+        assertEquals(java.util.List.of(1, 5, 10, 20, 60), defaults.getRankConstants());
     }
 }

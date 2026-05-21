@@ -53,6 +53,20 @@ public class ExperimentOptionsForHybridSearch implements ExperimentOptions {
         private float increment;
     }
 
+    /**
+     * Creates the default experiment options for hybrid search with all supported techniques.
+     */
+    public static ExperimentOptionsForHybridSearch createDefault() {
+        return ExperimentOptionsForHybridSearch.builder()
+            .normalizationTechniques(Set.of(NORMALIZATION_MIN_MAX, NORMALIZATION_L2, NORMALIZATION_Z_SCORE))
+            .combinationTechniques(
+                Set.of(COMBINATION_ARITHMETIC_MEAN, COMBINATION_GEOMETRIC_MEAN, COMBINATION_HARMONIC_MEAN, COMBINATION_RRF)
+            )
+            .weightsRange(WeightsRange.builder().rangeMin(0.0f).rangeMax(1.0f).increment(0.1f).build())
+            .rankConstants(List.of(1, 5, 10, 20, 60))
+            .build();
+    }
+
     public List<ExperimentVariantHybridSearchDTO> getParameterCombinations(boolean includeWeights) {
         List<ExperimentVariantHybridSearchDTO> allVariants = new ArrayList<>();
         for (HybridSearchConfig config : buildConfigs()) {
