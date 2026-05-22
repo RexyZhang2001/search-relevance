@@ -7,6 +7,11 @@
  */
 package org.opensearch.searchrelevance.model;
 
+import static org.opensearch.searchrelevance.experiment.ExperimentOptionsForHybridSearch.EXPERIMENT_OPTION_COMBINATION_TECHNIQUE;
+import static org.opensearch.searchrelevance.experiment.ExperimentOptionsForHybridSearch.EXPERIMENT_OPTION_NORMALIZATION_TECHNIQUE;
+import static org.opensearch.searchrelevance.experiment.ExperimentOptionsForHybridSearch.EXPERIMENT_OPTION_RANK_CONSTANT;
+import static org.opensearch.searchrelevance.experiment.ExperimentOptionsForHybridSearch.EXPERIMENT_OPTION_WEIGHTS_FOR_COMBINATION;
+
 import java.io.IOException;
 import java.text.NumberFormat;
 import java.util.Locale;
@@ -61,10 +66,10 @@ public class ExperimentVariant implements ToXContentObject {
      */
     public String getTextualParameters() {
         StringBuilder sb = new StringBuilder();
-        appendIfPresent(sb, "combination", parameters.get("combination"));
-        appendIfPresent(sb, "normalization", parameters.get("normalization"));
+        appendIfPresent(sb, EXPERIMENT_OPTION_COMBINATION_TECHNIQUE, parameters.get(EXPERIMENT_OPTION_COMBINATION_TECHNIQUE));
+        appendIfPresent(sb, EXPERIMENT_OPTION_NORMALIZATION_TECHNIQUE, parameters.get(EXPERIMENT_OPTION_NORMALIZATION_TECHNIQUE));
 
-        Object weightsObj = parameters.get("weights");
+        Object weightsObj = parameters.get(EXPERIMENT_OPTION_WEIGHTS_FOR_COMBINATION);
         if (weightsObj instanceof float[] weightsArray && weightsArray.length > 0) {
             StringBuilder weightsBuilder = new StringBuilder();
             NumberFormat formatter = NumberFormat.getNumberInstance(Locale.ROOT);
@@ -76,10 +81,10 @@ public class ExperimentVariant implements ToXContentObject {
                 }
                 weightsBuilder.append(formatter.format(weightsArray[i]));
             }
-            appendIfPresent(sb, "weights", weightsBuilder.toString());
+            appendIfPresent(sb, EXPERIMENT_OPTION_WEIGHTS_FOR_COMBINATION, weightsBuilder.toString());
         }
 
-        appendIfPresent(sb, "rank_constant", parameters.get("rank_constant"));
+        appendIfPresent(sb, EXPERIMENT_OPTION_RANK_CONSTANT, parameters.get(EXPERIMENT_OPTION_RANK_CONSTANT));
         return sb.toString();
     }
 
