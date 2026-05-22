@@ -40,7 +40,7 @@ public class QuerySourceUtil {
      * @return definition of a temporary search pipeline
      */
     public static Map<String, Object> createDefinitionOfTemporarySearchPipeline(final ExperimentVariant experimentVariant) {
-        return ExperimentVariantHybridSearchDTO.fromParameters(experimentVariant.getParameters()).toSearchPipeline();
+        return ExperimentVariantHybridSearchDTOFactory.fromParameters(experimentVariant.getParameters()).toSearchPipeline();
     }
 
     /**

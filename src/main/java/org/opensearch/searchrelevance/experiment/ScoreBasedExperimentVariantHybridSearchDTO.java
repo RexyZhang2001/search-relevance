@@ -50,15 +50,16 @@ public class ScoreBasedExperimentVariantHybridSearchDTO implements ExperimentVar
 
     @Override
     public Map<String, Object> toSearchPipeline() {
+        if (queryWeightsForCombination == null) {
+            throw new IllegalArgumentException("queryWeightsForCombination must not be null for a score-based variant");
+        }
         Map<String, Object> normalizationTechniqueConfig = new HashMap<>(Map.of(TECHNIQUE_KEY, normalizationTechnique));
         Map<String, Object> combinationTechniqueConfig = new HashMap<>(Map.of(TECHNIQUE_KEY, combinationTechnique));
-        if (queryWeightsForCombination != null) {
-            List<Double> weightsList = new ArrayList<>(queryWeightsForCombination.length);
-            for (float weight : queryWeightsForCombination) {
-                weightsList.add((double) weight);
-            }
-            combinationTechniqueConfig.put(PARAMETERS_KEY, new HashMap<>(Map.of(WEIGHTS_KEY, weightsList)));
+        List<Double> weightsList = new ArrayList<>(queryWeightsForCombination.length);
+        for (float weight : queryWeightsForCombination) {
+            weightsList.add((double) weight);
         }
+        combinationTechniqueConfig.put(PARAMETERS_KEY, new HashMap<>(Map.of(WEIGHTS_KEY, weightsList)));
         Map<String, Object> normalizationProcessorConfig = new HashMap<>(
             Map.of(NORMALIZATION_KEY, normalizationTechniqueConfig, COMBINATION_KEY, combinationTechniqueConfig)
         );
@@ -70,8 +71,6 @@ public class ScoreBasedExperimentVariantHybridSearchDTO implements ExperimentVar
 
     /**
      * Reconstruct a score-based variant DTO from a persisted {@code parameters} map.
-     * Weights are optional; when absent, the resulting DTO carries a {@code null}
-     * weights array and the produced pipeline omits the weights stanza.
      */
     static ScoreBasedExperimentVariantHybridSearchDTO fromParameters(Map<String, Object> parameters) {
         String normalization = (String) parameters.get(EXPERIMENT_OPTION_NORMALIZATION_TECHNIQUE);

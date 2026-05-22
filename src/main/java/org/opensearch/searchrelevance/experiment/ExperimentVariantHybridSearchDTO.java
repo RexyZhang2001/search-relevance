@@ -7,9 +7,6 @@
  */
 package org.opensearch.searchrelevance.experiment;
 
-import static org.opensearch.searchrelevance.experiment.ExperimentOptionsForHybridSearch.COMBINATION_RRF;
-import static org.opensearch.searchrelevance.experiment.ExperimentOptionsForHybridSearch.EXPERIMENT_OPTION_COMBINATION_TECHNIQUE;
-
 import java.util.Map;
 
 /**
@@ -34,16 +31,4 @@ public interface ExperimentVariantHybridSearchDTO {
      *         structure neural-search expects) for executing this variant.
      */
     Map<String, Object> toSearchPipeline();
-
-    /**
-     * Reconstruct a typed DTO from a persisted {@code parameters} map. Dispatches on the
-     * {@code combination} value: {@code "rrf"} routes to RRF, anything else routes to
-     * score-based.
-     */
-    static ExperimentVariantHybridSearchDTO fromParameters(Map<String, Object> parameters) {
-        if (COMBINATION_RRF.equals(parameters.get(EXPERIMENT_OPTION_COMBINATION_TECHNIQUE))) {
-            return RRFExperimentVariantHybridSearchDTO.fromParameters(parameters);
-        }
-        return ScoreBasedExperimentVariantHybridSearchDTO.fromParameters(parameters);
-    }
 }
